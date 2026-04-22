@@ -2,10 +2,11 @@
 
 ComfyUI custom nodes for downloading video/audio via [yt-dlp](https://github.com/yt-dlp/yt-dlp) and feeding the result into the graph. Supports cookie-based authentication so you can use Premium accounts.
 
-Ships two nodes:
+Ships three nodes:
 
 - **Video Downloader (yt-dlp)** — fetch a URL to disk, output the file path.
 - **Load Audio (from path)** — read a STRING path into ComfyUI's `AUDIO` type, so `audio_only` downloads compose directly with audio-consuming nodes.
+- **String → AudioPath** — retype a STRING as `AUDIOPATH` for packs (e.g. UVR5) whose inputs demand that nominal type.
 
 ## Features
 
@@ -68,11 +69,19 @@ Category: `audio`. Reads an audio file at a given path and returns ComfyUI's sta
 
 Uses `torchaudio.load()` under the hood, which comes with any standard ComfyUI environment.
 
+### String → AudioPath
+
+Category: `audio/utils`. Passes a STRING through unchanged but retypes it as `AUDIOPATH`, which is what some audio packs (notably UVR5 forks) declare on their inputs. ComfyUI's type matching is strict/nominal, so without this step a plain STRING won't wire.
+
+- **Input**: `path` (STRING)
+- **Output**: `AUDIOPATH`
+
 ### Typical wiring
 
 ```
 Video Downloader (mode=video)       ──►  VHS_LoadVideo ──► IMAGE + AUDIO
 Video Downloader (mode=audio_only)  ──►  Load Audio (from path) ──► AUDIO
+Video Downloader (mode=audio_only)  ──►  String → AudioPath    ──► UVR5
 ```
 
 ## Using Premium / authenticated downloads
