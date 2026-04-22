@@ -18,20 +18,9 @@ Ships four nodes:
 
 ## Install
 
-### Manual
+Drop this repo into `ComfyUI/custom_nodes/` and run `pip install -r requirements.txt` in that directory.
 
-```bash
-cd ComfyUI/custom_nodes
-git clone git@github.com:Klim314/comfyui-karaoke.git
-cd comfyui-karaoke
-pip install -r requirements.txt
-```
-
-### With UV (for development)
-
-```bash
-uv sync
-```
+For development, `uv sync` works instead.
 
 ### CPU-only environments
 
