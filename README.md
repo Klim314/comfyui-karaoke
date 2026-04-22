@@ -1,19 +1,20 @@
-# ComfyUI Video Downloader
+# ComfyUI Karaoke
 
-ComfyUI custom nodes for downloading video/audio via [yt-dlp](https://github.com/yt-dlp/yt-dlp) and feeding the result into the graph. Supports cookie-based authentication so you can use Premium accounts.
+ComfyUI custom node pack for building karaoke pipelines. Currently covers the **source** and **stem separation** stages — fetch a track from the web, split it into vocal / instrumental stems, and hand the result off to downstream nodes. Future stages (pitch shift, lyric transcription, lyric sync, video render) will be added incrementally.
 
-Ships three nodes:
+Ships four nodes:
 
-- **Video Downloader (yt-dlp)** — fetch a URL to disk, output the file path.
+- **Video Downloader (yt-dlp)** — fetch a URL to disk, output the file path. Supports cookie-based auth for Premium / members-only content.
 - **Load Audio (from path)** — read a STRING path into ComfyUI's `AUDIO` type, so `audio_only` downloads compose directly with audio-consuming nodes.
 - **String → AudioPath** — retype a STRING as `AUDIOPATH` for packs (e.g. UVR5) whose inputs demand that nominal type.
+- **Audio Separator** — run MDX / VR / Demucs / MDXC models via [python-audio-separator](https://github.com/nomadkaraoke/python-audio-separator) to split an `AUDIO` into two stems.
 
 ## Features
 
 - Download video (merged to mp4) or audio only (mp3/m4a/opus/wav/flac/aac/vorbis)
 - Optional `cookies.txt` for Premium / age-gated / members-only content
 - Path-based outputs that compose with [VideoHelperSuite](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite) (`VHS_LoadVideo`) for video, and with the bundled `Load Audio (from path)` node for audio-only flows
-- Works with any site yt-dlp supports (YouTube, Vimeo, Twitter/X, etc.)
+- Stem separation with any model supported by `audio-separator` — models are auto-downloaded to `ComfyUI/models/audio_separator/` on first use and cached across runs
 
 ## Install
 
@@ -30,6 +31,14 @@ pip install -r requirements.txt
 
 ```bash
 uv sync
+```
+
+### CPU-only environments
+
+`requirements.txt` pulls `audio-separator[gpu]` by default (CUDA). On machines without a GPU, install the CPU variant instead:
+
+```bash
+pip install audio-separator[cpu]
 ```
 
 ### External dependency
@@ -67,7 +76,7 @@ Category: `audio`. Reads an audio file at a given path and returns ComfyUI's sta
 - **Input**: `audio_path` (STRING)
 - **Output**: `AUDIO`
 
-Uses `torchaudio.load()` under the hood, which comes with any standard ComfyUI environment.
+Uses `torchaudio.load()` under the hood, with a `soundfile` fallback.
 
 ### String → AudioPath
 
@@ -76,12 +85,35 @@ Category: `audio/utils`. Passes a STRING through unchanged but retypes it as `AU
 - **Input**: `path` (STRING)
 - **Output**: `AUDIOPATH`
 
+### Audio Separator
+
+Category: `karaoke/separation`. Runs a source-separation model on an incoming `AUDIO` and returns two stems as `AUDIO`.
+
+#### Inputs
+
+| Input | Type | Notes |
+|---|---|---|
+| `audio` | AUDIO | Standard ComfyUI audio dict |
+| `model_filename` | dropdown | Model to run (pulled from `audio-separator`'s manifest, falls back to a curated list) |
+| `output_format` | `wav` \| `flac` | Intermediate file format used during separation |
+
+#### Outputs
+
+- `primary_stem` (AUDIO) — first stem the model produces (e.g. Vocals for a vocal model)
+- `secondary_stem` (AUDIO) — second stem (e.g. Instrumental)
+
+Stem semantics depend on the model; the names are deliberately generic. Consult the model's documentation to know which stem is which.
+
+Models are downloaded on demand to `ComfyUI/models/audio_separator/` and reused thereafter. Outside a ComfyUI environment (e.g. running the smoke test standalone), the default cache location is `~/.audio-separator/models/`.
+
 ### Typical wiring
 
 ```
+Video Downloader (mode=audio_only)  ──►  Load Audio (from path) ──► Audio Separator ──► primary_stem (AUDIO)
+                                                                                     └─► secondary_stem (AUDIO)
+
 Video Downloader (mode=video)       ──►  VHS_LoadVideo ──► IMAGE + AUDIO
-Video Downloader (mode=audio_only)  ──►  Load Audio (from path) ──► AUDIO
-Video Downloader (mode=audio_only)  ──►  String → AudioPath    ──► UVR5
+Video Downloader (mode=audio_only)  ──►  String → AudioPath    ──► UVR5 (external pack)
 ```
 
 ## Using Premium / authenticated downloads
@@ -97,4 +129,8 @@ Export your browser cookies to a Netscape-format `cookies.txt`:
 
 ## Caching behavior
 
-ComfyUI caches node outputs by input hash. Same URL + same options = no re-download on repeated queue runs. Change the URL or delete the file manually to force a fresh download.
+ComfyUI caches node outputs by input hash. Same URL + same options = no re-download on repeated queue runs. Change the URL or delete the file manually to force a fresh download. The same applies to `Audio Separator` — identical waveform + model = cached stems.
+
+## Roadmap
+
+Stages beyond stem separation are planned but not yet implemented: pitch shifting, lyric transcription (Whisper), lyric sync (LRC/SRT), and karaoke video rendering with burned-in lyrics.

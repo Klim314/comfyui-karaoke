@@ -1,7 +1,7 @@
 [project]
-name = "comfyui-video-downloader"
+name = "comfyui-karaoke"
 version = "0.1.0"
-description = "ComfyUI custom node for downloading videos/audio via yt-dlp, with optional cookie-based auth for premium accounts."
+description = "ComfyUI custom node pack for building karaoke pipelines — yt-dlp source, stem separation, and audio plumbing nodes."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
@@ -9,6 +9,7 @@ authors = [
 ]
 dependencies = [
     "yt-dlp>=2025.1.1",
+    "audio-separator[gpu]>=0.24.0",
 ]
 
 [build-system]
