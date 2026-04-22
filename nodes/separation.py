@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
@@ -29,8 +30,14 @@ def _list_model_filenames() -> list[str]:
         filenames = sorted(models.keys())
         if filenames:
             return filenames
-    except Exception:
-        pass
+        print("[comfyui-karaoke] AudioSeparator: model manifest was empty, using fallback list", file=sys.stderr)
+    except Exception as e:  # noqa: BLE001
+        print(
+            f"[comfyui-karaoke] AudioSeparator: could not load model manifest "
+            f"({type(e).__name__}: {e}) — using fallback list. "
+            f"Check that `audio-separator` is installed in ComfyUI's Python environment.",
+            file=sys.stderr,
+        )
     return list(_FALLBACK_MODELS)
 
 
